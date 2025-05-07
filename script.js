@@ -18,11 +18,28 @@ function sendMessage() {
         input.value = '';
         showTypingIndicator();
 
-        // Simuler une réponse de l'assistant (à remplacer par une vraie API)
-        setTimeout(() => {
+        // ✅ Remplace cette URL par l’URL Render de ton backend Flask
+        fetch('https://chatbobackend.onrender.com', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
             hideTypingIndicator();
-            respondToMessage(message);
-        }, 1500);
+            if (data.status === 'success') {
+                addMessage('assistant', data.response);
+            } else {
+                addMessage('assistant', 'Désolé, une erreur est survenue. Veuillez réessayer.');
+            }
+        })
+        .catch(error => {
+            hideTypingIndicator();
+            addMessage('assistant', 'Désolé, je ne peux pas répondre pour le moment. Veuillez réessayer plus tard.');
+            console.error('Erreur:', error);
+        });
     }
 }
 
@@ -31,7 +48,7 @@ function addMessage(sender, text) {
     const messagesContainer = document.getElementById('chat-messages-container');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
-    
+
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
 
@@ -43,11 +60,11 @@ function addMessage(sender, text) {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    
+
     const senderName = document.createElement('div');
     senderName.className = 'message-sender';
     senderName.textContent = sender === 'user' ? 'Vous' : 'NEOS';
-    
+
     const messageBody = document.createElement('div');
     messageBody.className = 'message-body';
     messageBody.textContent = text;
@@ -111,28 +128,11 @@ function sendQuickQuestion(type) {
     }
 }
 
-// Fonction pour générer une réponse (à remplacer par une vraie API)
-function respondToMessage(message) {
-    let response = 'Je suis désolé, mais je suis actuellement en cours de développement. Bientôt, je pourrai répondre à toutes vos questions concernant l\'OPRAG de manière plus précise.';
-    
-    // Réponses simples pour la démonstration
-    if (message.toLowerCase().includes('services portuaires')) {
-        response = 'L\'OPRAG offre une gamme complète de services portuaires, notamment le pilotage, le remorquage, l\'amarrage, et la manutention de différents types de cargaisons.';
-    } else if (message.toLowerCase().includes('partenariats')) {
-        response = 'L\'OPRAG collabore avec de nombreux partenaires internationaux pour améliorer ses services et développer ses infrastructures portuaires.';
-    } else if (message.toLowerCase().includes('actualités')) {
-        response = 'Restez informé des dernières actualités de l\'OPRAG concernant les développements portuaires, les nouveaux partenariats et les améliorations de services.';
-    }
-
-    addMessage('assistant', response);
-}
-
 // Initialisation des événements au chargement de la page
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
 
-    // Activer/désactiver le bouton d'envoi en fonction de la saisie
     input.addEventListener('input', () => {
         sendButton.style.opacity = input.value.trim() ? '1' : '0.5';
     });
