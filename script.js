@@ -18,9 +18,10 @@ function sendMessage() {
         input.value = '';
         showTypingIndicator();
 
-        // ✅ Remplace cette URL par l’URL Render de ton backend Flask
-        fetch('https://chatbobackend.onrender.com', {
+        // ✅ URL Render avec endpoint correct + mode CORS
+        fetch('https://chatbobackend.onrender.com/api/chat', {
             method: 'POST',
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
