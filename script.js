@@ -2,7 +2,7 @@
 let messageHistory = [];
 
 // Configuration de l'API
-const API_URL = 'https://chatbobackend.onrender.com/api/chat';
+const API_URL = 'https://neos-bvn1.onrender.com';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 seconde
 
