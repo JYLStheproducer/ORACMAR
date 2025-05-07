@@ -1,6 +1,11 @@
 // Gestion des messages du chat
 let messageHistory = [];
 
+// Configuration de l'API
+const API_URL = 'https://chatbobackend.onrender.com/api/chat';
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 seconde
+
 // Fonction pour gérer l'envoi de messages via la touche Entrée
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
@@ -8,8 +13,37 @@ function handleKeyPress(event) {
     }
 }
 
+// Fonction pour envoyer un message avec retry
+async function sendMessageWithRetry(message, retryCount = 0) {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'same-origin',
+            body: JSON.stringify({ message: message })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        if (retryCount < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return sendMessageWithRetry(message, retryCount + 1);
+        }
+        throw error;
+    }
+}
+
 // Fonction pour envoyer un message
-function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById('user-input');
     const message = input.value.trim();
 
@@ -18,29 +52,28 @@ function sendMessage() {
         input.value = '';
         showTypingIndicator();
 
-        // ✅ URL Render avec endpoint correct + mode CORS
-        fetch('https://chatbobackend.onrender.com/api/chat', {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ message: message })
-        })
-        .then(response => response.json())
-        .then(data => {
+        try {
+            const data = await sendMessageWithRetry(message);
             hideTypingIndicator();
-            if (data.status === 'success') {
+            if (data.response) {
                 addMessage('assistant', data.response);
             } else {
-                addMessage('assistant', 'Désolé, une erreur est survenue. Veuillez réessayer.');
+                throw new Error('Réponse invalide du serveur');
             }
-        })
-        .catch(error => {
+        } catch (error) {
             hideTypingIndicator();
-            addMessage('assistant', 'Désolé, je ne peux pas répondre pour le moment. Veuillez réessayer plus tard.');
             console.error('Erreur:', error);
-        });
+            let errorMessage = 'Désolé, une erreur est survenue. ';
+            
+            if (error.message.includes('CORS')) {
+                errorMessage += 'Problème de connexion au serveur. ';
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage += 'Impossible de joindre le serveur. ';
+            }
+            
+            errorMessage += 'Veuillez réessayer dans quelques instants.';
+            addMessage('assistant', errorMessage);
+        }
     }
 }
 
@@ -102,39 +135,22 @@ function hideTypingIndicator() {
     indicator.style.display = 'none';
 }
 
-// Fonction pour faire défiler automatiquement vers le bas
+// Fonction pour faire défiler vers le bas
 function scrollToBottom() {
-    const messagesContainer = document.getElementById('chat-messages-container');
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    const messagesWrapper = document.querySelector('.messages-wrapper');
+    messagesWrapper.scrollTop = messagesWrapper.scrollHeight;
 }
 
-// Fonction pour gérer les questions rapides
-function sendQuickQuestion(type) {
-    let question = '';
-    switch(type) {
-        case 'services':
-            question = 'Pouvez-vous me présenter les services portuaires de l\'OPRAG ?';
-            break;
-        case 'partenariats':
-            question = 'Quels sont les principaux partenariats de l\'OPRAG ?';
-            break;
-        case 'actualites':
-            question = 'Quelles sont les dernières actualités de l\'OPRAG ?';
-            break;
-    }
-    if (question) {
-        const input = document.getElementById('user-input');
-        input.value = question;
+// Fonction pour envoyer une question rapide
+function sendQuickQuestion(category) {
+    const questions = {
+        'services': 'Quels sont les services portuaires disponibles ?',
+        'partenariats': 'Pouvez-vous me parler des partenariats actuels ?',
+        'actualites': 'Quelles sont les dernières actualités ?'
+    };
+
+    if (questions[category]) {
+        document.getElementById('user-input').value = questions[category];
         sendMessage();
     }
 }
-
-// Initialisation des événements au chargement de la page
-document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
-
-    input.addEventListener('input', () => {
-        sendButton.style.opacity = input.value.trim() ? '1' : '0.5';
-    });
-});
